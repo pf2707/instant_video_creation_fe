@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Marketing Video Creator — Design Demo</title>
+<style>
+  :root {
+    --bg: #f5f7fb;
+    --panel: #ffffff;
+    --panel-2: #f1f4f9;
+    --line: #e2e7f0;
+    --line-soft: #edf0f6;
+    --txt: #1a2230;
+    --txt-dim: #5a6577;
+    --txt-faint: #98a2b3;
+    --accent: #4f6ff0;
+    --accent-2: #4f6ff0;
+    --split: #e0940a;
+    --insert: #12a866;
+    --danger: #ef4444;
+    --radius: 12px;
+    --shadow: 0 12px 40px rgba(30,41,59,.12);
+    font-synthesis: none;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--txt);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+
+  /* ---------- Top chrome ---------- */
+  .topbar {
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(255,255,255,.85);
+    backdrop-filter: saturate(180%) blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    letter-spacing: -.01em;
+  }
+  .brand .logo {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), #9b6bff);
+    display: grid; place-items: center;
+    box-shadow: 0 4px 14px rgba(108,140,255,.4);
+  }
+  .brand .logo svg { width: 16px; height: 16px; }
+  .brand small { color: var(--txt-faint); font-weight: 500; font-size: 12px; }
+
+  .demo-nav {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+    background: var(--panel);
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+  }
+  .demo-nav button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--txt-dim);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: .15s;
+  }
+  .demo-nav button:hover { color: var(--txt); }
+  .demo-nav button.active {
+    background: var(--accent-2);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(79,111,240,.5);
+  }
+
+  /* ---------- Screen switching ---------- */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ---------- Dashboard ---------- */
+  .dash {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 64px 24px 80px;
+  }
+  .dash-hero { text-align: center; margin-bottom: 48px; }
+  .dash-hero h1 {
+    font-size: 40px;
+    line-height: 1.1;
+    letter-spacing: -.03em;
+    margin: 0 0 12px;
+  }
+  .dash-hero h1 .grad {
+    background: linear-gradient(120deg, var(--accent), #b98bff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .dash-hero p { color: var(--txt-dim); font-size: 16px; max-width: 520px; margin: 0 auto; }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .feature-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px;
+    cursor: pointer;
+    transition: .2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .feature-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(600px circle at var(--mx,50%) var(--my,0%), rgba(108,140,255,.08), transparent 40%);
+    opacity: 0;
+    transition: .2s;
+    pointer-events: none;
+  }
+  .feature-card:hover { border-color: #33405a; transform: translateY(-3px); box-shadow: var(--shadow); }
+  .feature-card:hover::after { opacity: 1; }
+  .feature-card .ico {
+    width: 52px; height: 52px;
+    border-radius: 13px;
+    display: grid; place-items: center;
+    margin-bottom: 20px;
+  }
+  .feature-card.split .ico { background: rgba(255,202,87,.13); color: var(--split); }
+  .feature-card.insert .ico { background: rgba(94,224,160,.13); color: var(--insert); }
+  .feature-card .ico svg { width: 26px; height: 26px; }
+  .feature-card h3 { margin: 0 0 8px; font-size: 19px; letter-spacing: -.01em; }
+  .feature-card p { margin: 0 0 20px; color: var(--txt-dim); font-size: 14px; }
+  .feature-card .go {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: var(--accent);
+  }
+  .feature-card .tag {
+    position: absolute; top: 22px; right: 22px;
+    font-size: 11px; font-weight: 600; color: var(--txt-faint);
+    border: 1px solid var(--line); padding: 3px 8px; border-radius: 20px;
+  }
+
+  .recent {
+    margin-top: 48px;
+  }
+  .recent h4 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--txt-faint); margin: 0 0 14px; }
+  .proj-row {
+    display: grid;
+    grid-template-columns: 40px 1fr auto auto;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .proj-row .thumb { width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg,#eef1f8,#dfe5f2); display:grid; place-items:center; color: var(--txt-faint); }
+  .proj-row .meta b { font-size: 14px; font-weight: 600; }
+  .proj-row .meta span { display:block; font-size: 12px; color: var(--txt-faint); }
+  .proj-row .pill { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; }
+  .pill.split { background: rgba(255,202,87,.13); color: var(--split); }
+  .pill.insert { background: rgba(94,224,160,.13); color: var(--insert); }
+  .proj-row .when { font-size: 12px; color: var(--txt-faint); }
+
+  /* ---------- Editor layout ---------- */
+  .editor { display: flex; flex-direction: column; height: calc(100vh - 52px); }
+  .editor-head {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .back-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: transparent; border: 1px solid var(--line);
+    color: var(--txt-dim); font-size: 13px; font-weight: 600;
+    padding: 7px 12px; border-radius: 8px; cursor: pointer; font-family: inherit;
+  }
+  .back-btn:hover { color: var(--txt); border-color: #33405a; }
+  .proj-title { display: flex; align-items: center; gap: 8px; }
+  .proj-title input {
+    background: transparent; border: 1px solid transparent; color: var(--txt);
+    font-size: 15px; font-weight: 600; font-family: inherit;
+    padding: 5px 8px; border-radius: 7px; width: 220px;
+  }
+  .proj-title input:hover { border-color: var(--line); }
+  .proj-title input:focus { outline: none; border-color: var(--accent); background: var(--bg); }
+  .editor-head .spacer { margin-left: auto; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    border: 1px solid var(--line); background: var(--panel-2); color: var(--txt);
+    font-size: 13px; font-weight: 600; font-family: inherit;
+    padding: 8px 14px; border-radius: 8px; cursor: pointer; transition: .15s;
+  }
+  .btn:hover { border-color: #33405a; }
+  .btn svg { width: 15px; height: 15px; }
+  .btn.primary { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+  .btn.primary:hover { background: #435fe0; box-shadow: 0 4px 14px rgba(79,111,240,.4); }
+  .btn.ghost { background: transparent; }
+
+  /* ---------- Preview + side ---------- */
+  .editor-body { flex: 1; display: grid; grid-template-columns: 1fr 300px; min-height: 0; }
+  .preview-wrap {
+    display: flex; flex-direction: column; min-height: 0;
+    padding: 24px; gap: 16px;
+  }
+  .video-stage {
+    flex: 1;
+    background:
+      linear-gradient(135deg, rgba(79,111,240,.05), transparent),
+      repeating-conic-gradient(#eef1f7 0% 25%, #f7f9fc 0% 50%) 50% / 22px 22px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    display: grid; place-items: center;
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .video-stage .mock-frame {
+    width: 62%;
+    aspect-ratio: 16/9;
+    border-radius: 8px;
+    background: linear-gradient(135deg,#39415a,#20283e);
+    display: grid; place-items: center;
+    box-shadow: 0 20px 50px rgba(30,41,59,.28);
+    position: relative;
+  }
+  .video-stage .mock-frame .play {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: rgba(255,255,255,.18); backdrop-filter: blur(4px);
+    display: grid; place-items: center; border: 1px solid rgba(255,255,255,.28);
+  }
+  .video-stage .badge {
+    position: absolute; top: 14px; left: 14px;
+    font-size: 11px; font-weight: 600; color: var(--txt-dim);
+    background: rgba(255,255,255,.9); padding: 4px 10px; border-radius: 20px;
+    border: 1px solid var(--line);
+  }
+  .transport {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 16px;
+  }
+  .transport .tbtn {
+    width: 34px; height: 34px; border-radius: 8px;
+    display: grid; place-items: center; cursor: pointer;
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--txt);
+  }
+  .transport .tbtn.big { background: var(--accent-2); border-color: var(--accent-2); }
+  .transport .time { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--txt-dim); }
+  .transport .time b { color: var(--txt); }
+  .transport .vol { margin-left: auto; display:flex; align-items:center; gap:8px; color: var(--txt-faint); }
+
+  /* ---------- Side panel ---------- */
+  .side {
+    border-left: 1px solid var(--line);
+    background: var(--panel);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  .side h4 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--txt-faint); margin: 0; padding: 18px 18px 10px;
+  }
+  .side-sec { padding: 0 18px 18px; border-bottom: 1px solid var(--line-soft); }
+  .field { margin-bottom: 14px; }
+  .field label { display:block; font-size: 12px; color: var(--txt-dim); margin-bottom: 6px; }
+  .seg {
+    display: inline-flex; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 3px; gap: 2px;
+  }
+  .seg button {
+    border: 0; background: transparent; color: var(--txt-dim);
+    font-size: 12px; font-weight: 600; font-family: inherit;
+    padding: 6px 14px; border-radius: 6px; cursor: pointer;
+  }
+  .seg button.active { background: var(--panel-2); color: var(--txt); }
+
+  /* Marker list */
+  .marker-list { list-style: none; margin: 0; padding: 0; }
+  .marker-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; background: var(--bg);
+    border: 1px solid var(--line-soft); border-radius: 8px; margin-bottom: 8px;
+  }
+  .marker-item .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .marker-item.split-m .dot { background: var(--split); }
+  .marker-item.insert-m .dot { background: var(--insert); }
+  .marker-item .m-time { font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; }
+  .marker-item .m-sub { font-size: 11px; color: var(--txt-faint); }
+  .marker-item .m-x { margin-left: auto; color: var(--txt-faint); cursor: pointer; width: 22px; height: 22px; display:grid; place-items:center; border-radius: 6px; }
+  .marker-item .m-x:hover { color: var(--danger); background: rgba(255,107,107,.1); }
+  .marker-item .up-btn {
+    margin-left: auto; font-size: 11px; font-weight: 600;
+    color: var(--insert); background: rgba(94,224,160,.1);
+    border: 1px solid rgba(94,224,160,.25); border-radius: 6px;
+    padding: 5px 9px; cursor: pointer;
+  }
+  .marker-item.filled .up-btn { color: var(--txt-dim); background: var(--panel-2); border-color: var(--line); }
+
+  .hint {
+    font-size: 12px; color: var(--txt-faint); line-height: 1.6;
+    background: var(--bg); border: 1px dashed var(--line); border-radius: 8px;
+    padding: 12px; margin-top: 4px;
+  }
+  .empty-markers { text-align: center; padding: 24px 12px; color: var(--txt-faint); font-size: 13px; }
+
+  /* ---------- Timeline ---------- */
+  .timeline {
+    border-top: 1px solid var(--line);
+    background: var(--panel);
+    padding: 14px 20px 20px;
+  }
+  .timeline-tools {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+  }
+  .tool-btn {
+    display: inline-flex; align-items:center; gap: 6px;
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--txt-dim);
+    font-size: 12px; font-weight: 600; font-family: inherit;
+    padding: 7px 11px; border-radius: 7px; cursor: pointer;
+  }
+  .tool-btn:hover { color: var(--txt); border-color: #33405a; }
+  .tool-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(108,140,255,.08); }
+  .tool-btn svg { width: 14px; height: 14px; }
+  .tl-spacer { margin-left: auto; }
+  .zoom { display: flex; align-items: center; gap: 8px; color: var(--txt-faint); font-size: 12px; }
+  .zoom input { width: 100px; accent-color: var(--accent); }
+
+  .ruler {
+    height: 22px; position: relative; margin: 0 0 6px;
+    border-bottom: 1px solid var(--line-soft);
+    color: var(--txt-faint); font-size: 10px; font-variant-numeric: tabular-nums;
+  }
+  .ruler span { position: absolute; top: 3px; transform: translateX(-2px); }
+  .ruler span::before { content:""; position:absolute; left:0; bottom:-6px; width:1px; height:5px; background: var(--line); }
+
+  .track {
+    position: relative;
+    height: 74px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+  }
+  .frame {
+    flex: 1;
+    border-right: 1px solid rgba(30,41,59,.06);
+    background-size: cover; background-position: center;
+    min-width: 0;
+  }
+  .frame:nth-child(odd) { background: linear-gradient(135deg,#cfd8ea,#e3e9f5); }
+  .frame:nth-child(even) { background: linear-gradient(135deg,#c6d1e8,#dde5f3); }
+  /* fake filmstrip color variation */
+  .track .frame:nth-child(3n) { filter: hue-rotate(20deg) brightness(1.05); }
+  .track .frame:nth-child(4n) { filter: hue-rotate(-15deg); }
+
+  .playhead {
+    position: absolute; top: -6px; bottom: 0; width: 2px;
+    background: var(--accent); z-index: 6;
+  }
+  .playhead::before {
+    content:""; position:absolute; top:-2px; left:-5px;
+    border: 6px solid transparent; border-top-color: var(--accent);
+    border-bottom: 0;
+  }
+
+  /* Split markers on track */
+  .cut {
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: var(--split); z-index: 5;
+    box-shadow: 0 0 8px rgba(255,202,87,.6);
+  }
+  .cut::before {
+    content: "✂"; position: absolute; top: -1px; left: 50%; transform: translateX(-50%);
+    font-size: 10px; background: var(--split); color: #1a1400;
+    width: 16px; height: 16px; border-radius: 4px; display: grid; place-items: center;
+  }
+  .seg-label {
+    position: absolute; bottom: 6px; font-size: 10px; font-weight: 700;
+    color: var(--split); background: rgba(255,255,255,.92); padding: 2px 6px; border-radius: 4px;
+    border: 1px solid rgba(224,148,10,.3);
+    transform: translateX(-50%);
+  }
+
+  /* Insert markers on track */
+  .ins {
+    position: absolute; top: 0; bottom: 0; width: 3px;
+    background: var(--insert); z-index: 5;
+    box-shadow: 0 0 8px rgba(94,224,160,.6);
+  }
+  .ins::before {
+    content: "+"; position: absolute; top: -1px; left: 50%; transform: translateX(-50%);
+    font-size: 13px; font-weight: 700; background: var(--insert); color: #00120a;
+    width: 16px; height: 16px; border-radius: 4px; display: grid; place-items: center;
+  }
+  .ins.filled::after {
+    content: "🎬"; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; background: rgba(255,255,255,.92); padding: 2px 5px; border-radius: 4px;
+    border: 1px solid rgba(18,168,102,.3);
+  }
+
+  /* ---------- Upload empty state ---------- */
+  .dropzone {
+    flex: 1; margin: 24px; border: 2px dashed var(--line);
+    border-radius: 16px; display: grid; place-items: center; text-align: center;
+    background: radial-gradient(500px circle at 50% 40%, rgba(108,140,255,.05), transparent);
+  }
+  .dropzone .dz-ico { width: 64px; height: 64px; border-radius: 16px; background: var(--panel-2); display:grid; place-items:center; margin: 0 auto 18px; color: var(--accent); }
+  .dropzone h3 { margin: 0 0 6px; font-size: 18px; }
+  .dropzone p { margin: 0 0 20px; color: var(--txt-dim); font-size: 14px; }
+
+  /* ---------- Export modal ---------- */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(30,41,59,.4);
+    backdrop-filter: blur(4px); z-index: 50;
+    display: none; place-items: center;
+  }
+  .modal-overlay.open { display: grid; }
+  .modal {
+    width: 440px; max-width: calc(100vw - 40px);
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 16px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  .modal-head { padding: 20px 22px; border-bottom: 1px solid var(--line-soft); }
+  .modal-head h3 { margin: 0 0 4px; font-size: 17px; }
+  .modal-head p { margin: 0; color: var(--txt-dim); font-size: 13px; }
+  .modal-body { padding: 20px 22px; }
+  .opt-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+  .opt-row:last-child { border-bottom: 0; }
+  .opt-row .lbl { font-size: 14px; }
+  .opt-row .lbl small { display:block; color: var(--txt-faint); font-size: 12px; }
+  .modal-foot { padding: 16px 22px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--line-soft); background: var(--bg); }
+
+  .location-box {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; font-size: 13px; color: var(--txt-dim); margin-top: 10px;
+  }
+  .location-box .path { flex: 1; color: var(--txt); font-family: ui-monospace, monospace; font-size: 12px; }
+
+  .out-list { margin-top: 14px; }
+  .out-list .out-item {
+    display:flex; align-items:center; gap: 10px; padding: 8px 10px;
+    background: var(--bg); border:1px solid var(--line-soft); border-radius: 7px; margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .out-list .out-item .oi { color: var(--split); }
+  .out-list .out-item .sz { margin-left: auto; color: var(--txt-faint); font-size: 12px; }
+
+  .note {
+    max-width: 1040px; margin: 0 auto; padding: 0 24px 40px;
+    color: var(--txt-faint); font-size: 12px; text-align: center;
+  }
+  @media (max-width: 860px) {
+    .feature-grid { grid-template-columns: 1fr; }
+    .editor-body { grid-template-columns: 1fr; }
+    .side { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<div class="topbar">
+  <div class="brand">
+    <span class="logo">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4z" stroke="#fff" stroke-width="1.8"/><path d="M10 9l5 3-5 3V9z" fill="#fff"/></svg>
+    </span>
+    <span>Marketing Video Creator <small>design demo</small></span>
+  </div>
+  <nav class="demo-nav">
+    <button data-go="dashboard" class="active">Dashboard</button>
+    <button data-go="split">Split Editor</button>
+    <button data-go="insert">Insert Editor</button>
+    <button data-go="upload">Upload State</button>
+  </nav>
+</div>
+
+<!-- ============ DASHBOARD ============ -->
+<section class="screen active" id="dashboard">
+  <div class="dash">
+    <div class="dash-hero">
+      <h1>Create <span class="grad">marketing videos</span><br/>in a few clicks</h1>
+      <p>Pick a tool to get started. Split a long recording into clips, or weave in extra footage at exact moments — all in your browser.</p>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-card split" data-go="split">
+        <span class="tag">Feature 1</span>
+        <div class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 7.5L20 18M8.5 16.5L20 6"/></svg>
+        </div>
+        <h3>Split Video</h3>
+        <p>Upload a video, mark cut points on the timeline, and export multiple clips at original quality.</p>
+        <span class="go">Open tool
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </span>
+      </div>
+
+      <div class="feature-card insert" data-go="insert">
+        <span class="tag">Feature 2</span>
+        <div class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/><rect x="2" y="4" width="20" height="16" rx="2" opacity=".35"/></svg>
+        </div>
+        <h3>Insert Videos</h3>
+        <p>Mark positions in a base video and drop in extra clips at each point. Export the combined result.</p>
+        <span class="go">Open tool
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </span>
+      </div>
+    </div>
+
+    <div class="recent">
+      <h4>Recent projects</h4>
+      <div class="proj-row">
+        <div class="thumb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16v14H4z"/><path d="M10 9l5 3-5 3z"/></svg></div>
+        <div class="meta"><b>Q3 Product Launch</b><span>base_recording.mp4 · 4 clips</span></div>
+        <span class="pill split">Split</span>
+        <span class="when">2 hours ago</span>
+      </div>
+      <div class="proj-row">
+        <div class="thumb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16v14H4z"/><path d="M10 9l5 3-5 3z"/></svg></div>
+        <div class="meta"><b>Instagram Promo Cut</b><span>promo_master.mov · 3 inserts</span></div>
+        <span class="pill insert">Insert</span>
+        <span class="when">Yesterday</span>
+      </div>
+      <div class="proj-row">
+        <div class="thumb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16v14H4z"/><path d="M10 9l5 3-5 3z"/></svg></div>
+        <div class="meta"><b>Webinar Highlights</b><span>webinar_full.mp4 · 6 clips</span></div>
+        <span class="pill split">Split</span>
+        <span class="when">3 days ago</span>
+      </div>
+    </div>
+  </div>
+  <p class="note">This is a static, non-functional design mockup. Buttons switch screens for preview only.</p>
+</section>
+
+<!-- ============ SPLIT EDITOR ============ -->
+<section class="screen" id="split">
+  <div class="editor">
+    <div class="editor-head">
+      <button class="back-btn" data-go="dashboard">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+        Dashboard
+      </button>
+      <div class="proj-title">
+        <span class="pill split">Split</span>
+        <input value="Q3 Product Launch" />
+      </div>
+      <div class="spacer"></div>
+      <button class="btn ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 13l4 4L19 7"/></svg>
+        Saved
+      </button>
+      <button class="btn primary" data-modal="split-export">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>
+        Export clips
+      </button>
+    </div>
+
+    <div class="editor-body">
+      <div class="preview-wrap">
+        <div class="video-stage">
+          <span class="badge">base_recording.mp4 · 1920×1080 · 02:14</span>
+          <div class="mock-frame">
+            <div class="play"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></div>
+          </div>
+        </div>
+        <div class="transport">
+          <div class="tbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM10 12l8-6v12z"/></svg></div>
+          <div class="tbtn big"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></div>
+          <div class="tbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 6l8 6-8 6z"/></svg></div>
+          <div class="time"><b>00:48</b> / 02:14</div>
+          <div class="vol">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 8a5 5 0 010 8"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <aside class="side">
+        <h4>Cut Points (3)</h4>
+        <div class="side-sec">
+          <ul class="marker-list">
+            <li class="marker-item split-m">
+              <span class="dot"></span>
+              <div><div class="m-time">00:32</div><div class="m-sub">Clip 1 → Clip 2</div></div>
+              <span class="m-x">✕</span>
+            </li>
+            <li class="marker-item split-m">
+              <span class="dot"></span>
+              <div><div class="m-time">01:05</div><div class="m-sub">Clip 2 → Clip 3</div></div>
+              <span class="m-x">✕</span>
+            </li>
+            <li class="marker-item split-m">
+              <span class="dot"></span>
+              <div><div class="m-time">01:47</div><div class="m-sub">Clip 3 → Clip 4</div></div>
+              <span class="m-x">✕</span>
+            </li>
+          </ul>
+          <div class="hint">Move the playhead and press <b>S</b> or the ✂ Split tool to add a cut point. Exporting produces one file per segment.</div>
+        </div>
+        <h4>Output</h4>
+        <div class="side-sec">
+          <div class="field">
+            <label>Format</label>
+            <div class="seg"><button class="active">MP4</button><button>MOV</button></div>
+          </div>
+          <div class="field">
+            <label>Quality</label>
+            <div class="seg"><button class="active">Original</button><button>High</button><button>Medium</button></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="timeline">
+      <div class="timeline-tools">
+        <button class="tool-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 7.5L20 18M8.5 16.5L20 6"/></svg> Split</button>
+        <button class="tool-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg> Snap</button>
+        <div class="tl-spacer"></div>
+        <div class="zoom">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4M8 11h6"/></svg>
+          <input type="range" min="1" max="100" value="55" />
+        </div>
+      </div>
+      <div class="ruler">
+        <span style="left:0%">0:00</span>
+        <span style="left:20%">0:27</span>
+        <span style="left:40%">0:54</span>
+        <span style="left:60%">1:20</span>
+        <span style="left:80%">1:47</span>
+        <span style="left:98%">2:14</span>
+      </div>
+      <div class="track" id="split-track">
+        <div class="playhead" style="left:36%"></div>
+        <div class="cut" style="left:24%"></div><div class="seg-label" style="left:12%">CLIP 1</div>
+        <div class="cut" style="left:49%"></div><div class="seg-label" style="left:36%">CLIP 2</div>
+        <div class="cut" style="left:79%"></div><div class="seg-label" style="left:64%">CLIP 3</div>
+        <div class="seg-label" style="left:89%">CLIP 4</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ INSERT EDITOR ============ -->
+<section class="screen" id="insert">
+  <div class="editor">
+    <div class="editor-head">
+      <button class="back-btn" data-go="dashboard">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+        Dashboard
+      </button>
+      <div class="proj-title">
+        <span class="pill insert">Insert</span>
+        <input value="Instagram Promo Cut" />
+      </div>
+      <div class="spacer"></div>
+      <button class="btn ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 13l4 4L19 7"/></svg>
+        Saved
+      </button>
+      <button class="btn primary" data-modal="insert-export">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>
+        Export combined
+      </button>
+    </div>
+
+    <div class="editor-body">
+      <div class="preview-wrap">
+        <div class="video-stage">
+          <span class="badge">promo_master.mov · 1920×1080 · 01:36</span>
+          <div class="mock-frame">
+            <div class="play"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></div>
+          </div>
+        </div>
+        <div class="transport">
+          <div class="tbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM10 12l8-6v12z"/></svg></div>
+          <div class="tbtn big"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></div>
+          <div class="tbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 6l8 6-8 6z"/></svg></div>
+          <div class="time"><b>00:21</b> / 01:36</div>
+          <div class="vol">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 8a5 5 0 010 8"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <aside class="side">
+        <h4>Insert Points (3)</h4>
+        <div class="side-sec">
+          <ul class="marker-list">
+            <li class="marker-item insert-m filled">
+              <span class="dot"></span>
+              <div><div class="m-time">00:12</div><div class="m-sub">intro_logo.mp4 · 0:04</div></div>
+              <button class="up-btn">Replace</button>
+            </li>
+            <li class="marker-item insert-m filled">
+              <span class="dot"></span>
+              <div><div class="m-time">00:44</div><div class="m-sub">testimonial.mov · 0:09</div></div>
+              <button class="up-btn">Replace</button>
+            </li>
+            <li class="marker-item insert-m">
+              <span class="dot"></span>
+              <div><div class="m-time">01:18</div><div class="m-sub" style="color:var(--insert)">No clip yet</div></div>
+              <button class="up-btn">Upload</button>
+            </li>
+          </ul>
+          <div class="hint">Each insert point needs a video. Uploaded clips are <b>not</b> shown on the timeline — only the insert marker. Export stitches them into the base at each point.</div>
+        </div>
+        <h4>Output</h4>
+        <div class="side-sec">
+          <div class="field">
+            <label>Format</label>
+            <div class="seg"><button>MP4</button><button class="active">MOV</button></div>
+          </div>
+          <div class="field">
+            <label>Quality</label>
+            <div class="seg"><button class="active">Original</button><button>High</button><button>Medium</button></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="timeline">
+      <div class="timeline-tools">
+        <button class="tool-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg> Add insert point</button>
+        <button class="tool-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg> Snap</button>
+        <div class="tl-spacer"></div>
+        <div class="zoom">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4M8 11h6"/></svg>
+          <input type="range" min="1" max="100" value="55" />
+        </div>
+      </div>
+      <div class="ruler">
+        <span style="left:0%">0:00</span>
+        <span style="left:20%">0:19</span>
+        <span style="left:40%">0:38</span>
+        <span style="left:60%">0:57</span>
+        <span style="left:80%">1:17</span>
+        <span style="left:98%">1:36</span>
+      </div>
+      <div class="track" id="insert-track">
+        <div class="playhead" style="left:22%"></div>
+        <div class="ins filled" style="left:12%"></div>
+        <div class="ins filled" style="left:46%"></div>
+        <div class="ins" style="left:81%"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ UPLOAD / EMPTY STATE ============ -->
+<section class="screen" id="upload">
+  <div class="editor">
+    <div class="editor-head">
+      <button class="back-btn" data-go="dashboard">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+        Dashboard
+      </button>
+      <div class="proj-title">
+        <span class="pill split">Split</span>
+        <input value="Untitled project" />
+      </div>
+      <div class="spacer"></div>
+      <button class="btn primary" disabled style="opacity:.5;cursor:not-allowed">Export clips</button>
+    </div>
+    <div class="editor-body" style="grid-template-columns:1fr">
+      <div class="dropzone">
+        <div>
+          <div class="dz-ico">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+          </div>
+          <h3>Upload a video to begin</h3>
+          <p>Drag &amp; drop your file here, or choose from your computer.<br/>Supports MP4 and MOV up to original resolution.</p>
+          <button class="btn primary" style="margin:0 auto">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 20h16"/></svg>
+            Choose video
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EXPORT MODALS ============ -->
+<div class="modal-overlay" id="split-export">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Export 4 clips</h3>
+      <p>Each segment between cut points is saved as its own file.</p>
+    </div>
+    <div class="modal-body">
+      <div class="opt-row">
+        <div class="lbl">Format<small>Container for all clips</small></div>
+        <div class="seg"><button class="active">MP4</button><button>MOV</button></div>
+      </div>
+      <div class="opt-row">
+        <div class="lbl">Quality<small>Keeps source resolution</small></div>
+        <div class="seg"><button class="active">Original</button><button>High</button></div>
+      </div>
+      <div class="location-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h6l2 2h10v10H3z"/></svg>
+        <span class="path">~/Movies/Q3_Launch/</span>
+        <button class="tool-btn">Change…</button>
+      </div>
+      <div class="out-list">
+        <div class="out-item"><span class="oi">▸</span> Q3_Launch_clip_1.mp4 <span class="sz">0:32 · ~48 MB</span></div>
+        <div class="out-item"><span class="oi">▸</span> Q3_Launch_clip_2.mp4 <span class="sz">0:33 · ~50 MB</span></div>
+        <div class="out-item"><span class="oi">▸</span> Q3_Launch_clip_3.mp4 <span class="sz">0:42 · ~63 MB</span></div>
+        <div class="out-item"><span class="oi">▸</span> Q3_Launch_clip_4.mp4 <span class="sz">0:27 · ~40 MB</span></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" data-close>Cancel</button>
+      <button class="btn primary" data-close>Choose location &amp; export</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="insert-export">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Export combined video</h3>
+      <p>Inserts are stitched into the base video at each point.</p>
+    </div>
+    <div class="modal-body">
+      <div class="opt-row">
+        <div class="lbl">Format<small>Output container</small></div>
+        <div class="seg"><button>MP4</button><button class="active">MOV</button></div>
+      </div>
+      <div class="opt-row">
+        <div class="lbl">Quality<small>Keeps source resolution</small></div>
+        <div class="seg"><button class="active">Original</button><button>High</button></div>
+      </div>
+      <div class="opt-row">
+        <div class="lbl">Inserts<small>1 point still empty — will be skipped</small></div>
+        <div style="font-size:13px;color:var(--insert);font-weight:600">2 of 3 filled</div>
+      </div>
+      <div class="location-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h6l2 2h10v10H3z"/></svg>
+        <span class="path">~/Movies/Promo/promo_final.mov</span>
+        <button class="tool-btn">Change…</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" data-close>Cancel</button>
+      <button class="btn primary" data-close>Choose location &amp; export</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Screen switching
+  function show(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active', s.id===id));
+    document.querySelectorAll('.demo-nav button').forEach(b=>b.classList.toggle('active', b.dataset.go===id));
+    window.scrollTo(0,0);
+  }
+  document.querySelectorAll('[data-go]').forEach(el=>{
+    el.addEventListener('click', ()=> show(el.dataset.go));
+  });
+
+  // Modals
+  document.querySelectorAll('[data-modal]').forEach(el=>{
+    el.addEventListener('click', ()=> document.getElementById(el.dataset.modal).classList.add('open'));
+  });
+  document.querySelectorAll('.modal-overlay').forEach(ov=>{
+    ov.addEventListener('click', e=>{ if(e.target===ov || e.target.hasAttribute('data-close')) ov.classList.remove('open'); });
+  });
+
+  // Segmented control toggles (demo only)
+  document.querySelectorAll('.seg').forEach(seg=>{
+    seg.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click', ()=>{ seg.querySelectorAll('button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); });
+    });
+  });
+
+  // Card hover glow follows cursor
+  document.querySelectorAll('.feature-card').forEach(c=>{
+    c.addEventListener('mousemove', e=>{
+      const r=c.getBoundingClientRect();
+      c.style.setProperty('--mx', (e.clientX-r.left)+'px');
+      c.style.setProperty('--my', (e.clientY-r.top)+'px');
+    });
+  });
+</script>
+</body>
+</html>
