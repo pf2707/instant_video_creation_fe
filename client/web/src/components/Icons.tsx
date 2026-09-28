@@ -97,3 +97,9 @@ export const PlusIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M12 5v14M5 12h14" />
   </svg>
 );
+
+export const TextIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M4 6V4h16v2M12 4v16M9 20h6" />
+  </svg>
+);

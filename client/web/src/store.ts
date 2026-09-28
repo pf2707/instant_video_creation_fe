@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { FeatureType, Project, VideoMeta } from "./types";
+import type { FeatureType, Project, TextOverlay, VideoMeta } from "./types";
 import { createProject } from "./types";
 import * as db from "./db";
 import { probeVideo } from "./lib/format";
@@ -30,6 +30,10 @@ interface AppState {
   removeInsert: (id: string) => void;
   setInsertClip: (id: string, file: File) => Promise<void>;
 
+  addOverlay: () => string | undefined;
+  updateOverlay: (id: string, patch: Partial<TextOverlay>) => void;
+  removeOverlay: (id: string) => void;
+
   persist: () => Promise<void>;
 }
 
@@ -55,6 +59,10 @@ export const useStore = create<AppState>((set, get) => ({
   openProject: async (id) => {
     const project = await db.getProject(id);
     if (!project) return;
+    // Backfill fields added after this project was first saved.
+    project.overlays ??= [];
+    project.cuts ??= [];
+    project.inserts ??= [];
     const blob = await db.getVideoBlob(id);
     const prev = get().videoUrl;
     if (prev) URL.revokeObjectURL(prev);
@@ -181,6 +189,41 @@ export const useStore = create<AppState>((set, get) => ({
     } finally {
       set({ busy: false });
     }
+  },
+
+  addOverlay: () => {
+    const current = get().current;
+    if (!current || !current.video) return undefined;
+    const overlay: TextOverlay = {
+      id: crypto.randomUUID(),
+      text: "Your text",
+      x: 0.5,
+      y: 0.5,
+      fontSize: Math.round(current.video.height * 0.08),
+      fontFamily: "Inter",
+      bold: true,
+      italic: false,
+      color: "#ffffff",
+      background: "dark",
+      start: 0,
+      end: current.video.duration,
+    };
+    get().patchCurrent({ overlays: [...current.overlays, overlay] });
+    return overlay.id;
+  },
+
+  updateOverlay: (id, patch) => {
+    const current = get().current;
+    if (!current) return;
+    get().patchCurrent({
+      overlays: current.overlays.map((o) => (o.id === id ? { ...o, ...patch } : o)),
+    });
+  },
+
+  removeOverlay: (id) => {
+    const current = get().current;
+    if (!current) return;
+    get().patchCurrent({ overlays: current.overlays.filter((o) => o.id !== id) });
   },
 
   persist: async () => {

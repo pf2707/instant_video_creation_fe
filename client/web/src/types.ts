@@ -1,4 +1,4 @@
-export type FeatureType = "split" | "insert";
+export type FeatureType = "split" | "insert" | "decor";
 export type OutputFormat = "mp4" | "mov";
 export type Quality = "original" | "high" | "medium";
 
@@ -25,6 +25,26 @@ export interface InsertPoint {
   clip?: VideoMeta;
 }
 
+/** A text overlay for the Decor feature. */
+export interface TextOverlay {
+  id: string;
+  text: string;
+  /** Center position as a fraction (0..1) of the video width/height. */
+  x: number;
+  y: number;
+  /** Font size in video pixels. */
+  fontSize: number;
+  fontFamily: string;
+  bold: boolean;
+  italic: boolean;
+  color: string; // hex
+  /** Semi-transparent scrim behind the text for readability. */
+  background: "none" | "dark" | "light";
+  /** Time range (seconds) the overlay is visible. */
+  start: number;
+  end: number;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -35,6 +55,7 @@ export interface Project {
   video?: VideoMeta;
   cuts: Cut[];
   inserts: InsertPoint[];
+  overlays: TextOverlay[];
   format: OutputFormat;
   quality: Quality;
 }
@@ -49,6 +70,7 @@ export function createProject(type: FeatureType): Project {
     updatedAt: now,
     cuts: [],
     inserts: [],
+    overlays: [],
     format: "mp4",
     quality: "original",
   };

@@ -3,8 +3,15 @@ import type { OutputFormat, Project, Quality } from "../types";
 import { useStore } from "../store";
 import { useToast } from "./Toast";
 import * as db from "../db";
-import { exportSplit, exportInsert, getRecentLogs, type ExportedFile } from "../lib/ffmpeg";
+import {
+  exportSplit,
+  exportInsert,
+  exportDecor,
+  getRecentLogs,
+  type ExportedFile,
+} from "../lib/ffmpeg";
 import { pickSink, writeSink } from "../lib/save";
+import { renderOverlayPng } from "../lib/textRender";
 import { formatTime } from "../lib/format";
 
 export function ExportModal({
@@ -22,13 +29,17 @@ export function ExportModal({
   const [logs, setLogs] = useState<string[]>([]);
 
   const isSplit = project.type === "split";
+  const isDecor = project.type === "decor";
   const clipCount = project.cuts.length + 1;
   const filledInserts = project.inserts.filter((i) => i.clip).length;
   const emptyInserts = project.inserts.length - filledInserts;
+  const overlayCount = project.overlays.length;
 
   const canExport = isSplit
     ? project.cuts.length > 0
-    : filledInserts > 0;
+    : isDecor
+      ? overlayCount > 0
+      : filledInserts > 0;
 
   const run = async () => {
     setError(null);
@@ -37,9 +48,8 @@ export function ExportModal({
     // Ask for the save location FIRST, while the click still counts as a user
     // gesture — the picker can't be opened after the long ffmpeg step.
     const outCount = isSplit ? clipCount : 1;
-    const suggested = isSplit
-      ? `${project.name}.${project.format}`
-      : `${project.name}_combined.${project.format}`;
+    const suffix = isSplit ? "" : isDecor ? "_text" : "_combined";
+    const suggested = `${project.name}${suffix}.${project.format}`;
     const sink = await pickSink(outCount, suggested);
     if (!sink) return; // user cancelled the picker
 
@@ -52,6 +62,16 @@ export function ExportModal({
       let files: ExportedFile[];
       if (isSplit) {
         files = await exportSplit(project, videoBlob, setProgress);
+      } else if (isDecor) {
+        setProgress({ label: "Rendering text…", ratio: 0 });
+        const { width, height } = project.video!;
+        const rendered = await Promise.all(
+          project.overlays.map(async (overlay) => ({
+            overlay,
+            png: await renderOverlayPng(overlay, width, height),
+          })),
+        );
+        files = [await exportDecor(project, videoBlob, rendered, setProgress)];
       } else {
         const clipBlobs = new Map<string, Blob>();
         for (const ins of project.inserts) {
@@ -65,7 +85,11 @@ export function ExportModal({
       setProgress({ label: "Saving…", ratio: 1 });
       await writeSink(sink, files);
       toast(
-        isSplit ? `Exported ${files.length} clips` : "Exported combined video",
+        isSplit
+          ? `Exported ${files.length} clips`
+          : isDecor
+            ? "Exported video with text"
+            : "Exported combined video",
       );
       onClose();
     } catch (err) {
@@ -83,11 +107,19 @@ export function ExportModal({
     <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
       <div className="modal">
         <div className="modal-head">
-          <h3>{isSplit ? `Export ${clipCount} clips` : "Export combined video"}</h3>
+          <h3>
+            {isSplit
+              ? `Export ${clipCount} clips`
+              : isDecor
+                ? "Export video with text"
+                : "Export combined video"}
+          </h3>
           <p>
             {isSplit
               ? "Each segment between cut points is saved as its own file."
-              : "Inserts are stitched into the base video at each point."}
+              : isDecor
+                ? `${overlayCount} text overlay${overlayCount === 1 ? "" : "s"} will be burned into the video.`
+                : "Inserts are stitched into the base video at each point."}
           </p>
         </div>
 
@@ -116,7 +148,7 @@ export function ExportModal({
               Quality
               <small>
                 {project.quality === "original"
-                  ? "Highest quality · frame-accurate cuts"
+                  ? "Highest quality"
                   : "Re-encoded · smaller files"}
               </small>
             </div>

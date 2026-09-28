@@ -1,6 +1,6 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile } from "@ffmpeg/util";
-import type { OutputFormat, Project, Quality } from "../types";
+import type { OutputFormat, Project, Quality, TextOverlay } from "../types";
 import { toFfmpegTime } from "./format";
 
 // Single-threaded ESM core, self-hosted from /public so it loads same-origin
@@ -257,6 +257,71 @@ export async function exportInsert(
     for (const n of normalized) await ff.deleteFile(n).catch(() => {});
     for (const seg of segs) if (seg.kind === "clip") await ff.deleteFile(seg.file).catch(() => {});
   }
+}
+
+/**
+ * Burn text overlays into the base video. Each overlay is supplied as a
+ * full-frame transparent PNG (rendered in the browser) and composited with the
+ * overlay filter, with per-overlay time gating via `enable`.
+ */
+export async function exportDecor(
+  project: Project,
+  videoBlob: Blob,
+  overlays: { overlay: TextOverlay; png: Blob }[],
+  onProgress: ProgressFn,
+): Promise<ExportedFile> {
+  if (!project.video) throw new Error("No base video");
+  if (overlays.length === 0) throw new Error("Add at least one text overlay");
+  const ff = await getFFmpeg();
+  const { ext, mime } = CONTAINER[project.format];
+  const { duration } = project.video;
+
+  const inputName = `input.${guessExt(project.video.mimeType)}`;
+  await ff.writeFile(inputName, await fetchFile(videoBlob));
+
+  const args = ["-i", inputName];
+  for (let i = 0; i < overlays.length; i++) {
+    await ff.writeFile(`ov_${i}.png`, await fetchFile(overlays[i].png));
+    args.push("-i", `ov_${i}.png`);
+  }
+
+  // Chain overlays: [0:v][1:v]overlay[t0];[t0][2:v]overlay[t1];...
+  let prev = "[0:v]";
+  const steps: string[] = [];
+  overlays.forEach(({ overlay }, i) => {
+    const out = i === overlays.length - 1 ? "[vout]" : `[t${i}]`;
+    const gated = overlay.start > 0.01 || overlay.end < duration - 0.01;
+    // Commas inside the enable expression must be escaped in a filtergraph.
+    const enable = gated
+      ? `:enable=between(t\\,${toFfmpegTime(overlay.start)}\\,${toFfmpegTime(overlay.end)})`
+      : "";
+    steps.push(`${prev}[${i + 1}:v]overlay=x=0:y=0${enable}${out}`);
+    prev = out;
+  });
+
+  progressCb = (r) => onProgress({ label: "Rendering text overlays", ratio: r });
+  await run(ff, [
+    ...args,
+    "-filter_complex", steps.join(";"),
+    "-map", "[vout]",
+    "-map", "0:a?",
+    "-c:v", "libx264", "-preset", "veryfast", "-crf", String(CRF[project.quality]),
+    "-pix_fmt", "yuv420p",
+    "-c:a", "aac", "-b:a", "192k",
+    "-movflags", "+faststart",
+    `output.${ext}`,
+  ]);
+  progressCb = null;
+
+  const data = await ff.readFile(`output.${ext}`);
+  const blob = new Blob([data as unknown as BlobPart], { type: mime });
+
+  await ff.deleteFile(inputName).catch(() => {});
+  await ff.deleteFile(`output.${ext}`).catch(() => {});
+  for (let i = 0; i < overlays.length; i++) await ff.deleteFile(`ov_${i}.png`).catch(() => {});
+
+  onProgress({ label: "Done", ratio: 1 });
+  return { name: `${safeName(project.name)}_text.${ext}`, blob };
 }
 
 function guessExt(mime: string): string {

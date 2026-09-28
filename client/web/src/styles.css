@@ -11,6 +11,7 @@
   --accent-2: #4f6ff0;
   --split: #e0940a;
   --insert: #12a866;
+  --decor: #8b5cf6;
   --danger: #ef4444;
   --radius: 12px;
   --shadow: 0 12px 40px rgba(30, 41, 59, 0.12);
@@ -63,7 +64,7 @@ input, button { font-family: inherit; }
 }
 .dash-hero p { color: var(--txt-dim); font-size: 16px; max-width: 520px; margin: 0 auto; }
 
-.feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
 .feature-card {
   background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
   padding: 28px; cursor: pointer; transition: 0.2s; position: relative; overflow: hidden;
@@ -73,6 +74,7 @@ input, button { font-family: inherit; }
 .feature-card .ico { width: 52px; height: 52px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 20px; }
 .feature-card.split .ico { background: rgba(224, 148, 10, 0.12); color: var(--split); }
 .feature-card.insert .ico { background: rgba(18, 168, 102, 0.12); color: var(--insert); }
+.feature-card.decor .ico { background: rgba(139, 92, 246, 0.12); color: var(--decor); }
 .feature-card .ico svg { width: 26px; height: 26px; }
 .feature-card h3 { margin: 0 0 8px; font-size: 19px; letter-spacing: -0.01em; }
 .feature-card p { margin: 0 0 20px; color: var(--txt-dim); font-size: 14px; }
@@ -94,6 +96,7 @@ input, button { font-family: inherit; }
 .proj-row .pill { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; }
 .pill.split { background: rgba(224, 148, 10, 0.12); color: var(--split); }
 .pill.insert { background: rgba(18, 168, 102, 0.12); color: var(--insert); }
+.pill.decor { background: rgba(139, 92, 246, 0.12); color: var(--decor); }
 .proj-row .when { font-size: 12px; color: var(--txt-faint); }
 .proj-row .del { color: var(--txt-faint); width: 28px; height: 28px; border: 0; background: transparent; border-radius: 6px; cursor: pointer; display: grid; place-items: center; }
 .proj-row .del:hover { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
@@ -240,6 +243,45 @@ input, button { font-family: inherit; }
 /* toast */
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--txt); color: #fff; padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; box-shadow: var(--shadow); z-index: 60; display: flex; align-items: center; gap: 10px; }
 .toast.err { background: var(--danger); }
+
+/* ---------- Decor: overlay layer + text panel ---------- */
+.overlay-layer { position: absolute; z-index: 3; }
+.overlay-text {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: pre;
+  text-align: center;
+  line-height: 1.2;
+  cursor: move;
+  user-select: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  padding: 2px;
+}
+.overlay-text.selected { outline: 1px dashed rgba(139, 92, 246, 0.9); outline-offset: 4px; }
+.overlay-text.ghost { opacity: 0.35; }
+.overlay-text > div { min-height: 1em; }
+
+.marker-item.decor-m { cursor: pointer; }
+.marker-item.decor-m .dot { background: var(--decor); }
+.marker-item.decor-m.active { border-color: var(--decor); box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.3); }
+
+.add-text-btn { width: 100%; justify-content: center; margin-top: 4px; }
+
+.text-input, .select-input, .num-input {
+  width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--txt);
+  border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit;
+}
+.text-input { resize: vertical; }
+.text-input:focus, .select-input:focus, .num-input:focus { outline: none; border-color: var(--accent); }
+.field.row { display: flex; gap: 10px; align-items: flex-end; }
+.field.row > div { flex: 1; }
+.field.row label { display: block; font-size: 12px; color: var(--txt-dim); margin-bottom: 6px; }
+.num-input { -moz-appearance: textfield; }
+.color-input { width: 100%; height: 36px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); cursor: pointer; }
+.time-set { display: flex; gap: 4px; }
+.time-set .num-input { flex: 1; }
+.tiny-btn { border: 1px solid var(--line); background: var(--panel-2); color: var(--txt-dim); font-size: 11px; font-weight: 600; border-radius: 6px; padding: 0 8px; cursor: pointer; }
+.tiny-btn:hover { color: var(--accent); border-color: var(--accent); }
 
 @media (max-width: 860px) {
   .feature-grid { grid-template-columns: 1fr; }

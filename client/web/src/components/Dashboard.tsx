@@ -4,6 +4,7 @@ import type { Project } from "../types";
 import {
   SplitIcon,
   InsertIcon,
+  TextIcon,
   ArrowRight,
   FilmIcon,
   TrashIcon,
@@ -61,6 +62,21 @@ export function Dashboard() {
               New insert project <ArrowRight width={14} height={14} />
             </span>
           </button>
+
+          <button className="feature-card decor" onClick={() => newProject("decor")}>
+            <span className="tag">Feature 3</span>
+            <div className="ico">
+              <TextIcon />
+            </div>
+            <h3>Decor Video</h3>
+            <p>
+              Add text overlays with custom font, size, style and color, then
+              burn them into the video.
+            </p>
+            <span className="go">
+              New decor project <ArrowRight width={14} height={14} />
+            </span>
+          </button>
         </div>
 
         <div className="recent">
@@ -102,10 +118,14 @@ function ProjectRow({
   const count =
     project.type === "split"
       ? `${project.cuts.length + 1} clip${project.cuts.length ? "s" : ""}`
-      : `${project.inserts.length} insert${project.inserts.length === 1 ? "" : "s"}`;
+      : project.type === "insert"
+        ? `${project.inserts.length} insert${project.inserts.length === 1 ? "" : "s"}`
+        : `${(project.overlays ?? []).length} text${(project.overlays ?? []).length === 1 ? "" : "s"}`;
   const sub = project.video
     ? `${project.video.name} · ${count} · ${formatTime(project.video.duration)}`
     : "No video yet";
+  const label =
+    project.type === "split" ? "Split" : project.type === "insert" ? "Insert" : "Decor";
 
   return (
     <div className="proj-row" onClick={onOpen}>
@@ -116,9 +136,7 @@ function ProjectRow({
         <b>{project.name}</b>
         <span>{sub}</span>
       </div>
-      <span className={`pill ${project.type}`}>
-        {project.type === "split" ? "Split" : "Insert"}
-      </span>
+      <span className={`pill ${project.type}`}>{label}</span>
       <span className="when">{relativeTime(project.updatedAt)}</span>
       <button
         className="del"

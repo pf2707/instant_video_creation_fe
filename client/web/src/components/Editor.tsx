@@ -3,6 +3,7 @@ import { useStore } from "../store";
 import { formatTime, formatBytes } from "../lib/format";
 import { Timeline, type Marker } from "./Timeline";
 import { ExportModal } from "./ExportModal";
+import { DecorWorkspace } from "./DecorWorkspace";
 import { useToast } from "./Toast";
 import type { InsertPoint, Project } from "../types";
 import {
@@ -38,7 +39,11 @@ export function Editor() {
         </button>
         <div className="proj-title">
           <span className={`pill ${project.type}`}>
-            {project.type === "split" ? "Split" : "Insert"}
+            {project.type === "split"
+              ? "Split"
+              : project.type === "insert"
+                ? "Insert"
+                : "Decor"}
           </span>
           <input
             value={project.name}
@@ -56,12 +61,18 @@ export function Editor() {
           onClick={() => setShowExport(true)}
         >
           <ExportIcon />
-          {project.type === "split" ? "Export clips" : "Export combined"}
+          {project.type === "split"
+            ? "Export clips"
+            : project.type === "insert"
+              ? "Export combined"
+              : "Export video"}
         </button>
       </div>
 
       {!project.video ? (
         <UploadState busy={busy} onFile={setBaseVideo} />
+      ) : project.type === "decor" ? (
+        <DecorWorkspace project={project} videoUrl={videoUrl} />
       ) : (
         <EditorWorkspace project={project} videoUrl={videoUrl} />
       )}
