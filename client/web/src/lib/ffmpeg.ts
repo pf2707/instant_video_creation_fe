@@ -2,6 +2,7 @@ import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile } from "@ffmpeg/util";
 import type { OutputFormat, Project, Quality, TextOverlay } from "../types";
 import { toFfmpegTime } from "./format";
+import { buildLeaves, type InsertNode } from "./composite";
 
 // Single-threaded ESM core, self-hosted from /public so it loads same-origin
 // (no CDN, no CORS, works offline). The worker imports it as an ES module, so
@@ -182,58 +183,51 @@ export async function exportInsert(
   const { width: W, height: H, duration } = project.video;
   const crf = CRF[project.quality];
 
-  const active = project.inserts
+  const nodes: InsertNode[] = project.inserts
     .filter((i) => i.clip && clipBlobs.has(i.id))
-    .sort((a, b) => a.time - b.time);
-  if (active.length === 0) throw new Error("No insert clips to combine");
+    .map((i) => ({ id: i.id, parentId: i.parentId, time: i.time, duration: i.clip!.duration }));
+  if (nodes.length === 0) throw new Error("No insert clips to combine");
 
-  const inputName = `base.${guessExt(project.video.mimeType)}`;
-  await ff.writeFile(inputName, await fetchFile(videoBlob));
+  // Flatten the (possibly nested) inserts into ordered source slices.
+  const leaves = buildLeaves(duration, undefined, nodes);
+  const mimeById = new Map(project.inserts.map((i) => [i.id, i.clip?.mimeType ?? "video/mp4"]));
 
-  type Seg =
-    | { kind: "base"; start: number; end: number }
-    | { kind: "clip"; file: string };
-
-  const segs: Seg[] = [];
-  let prev = 0;
-  for (const ins of active) {
-    if (ins.time - prev > 0.05) segs.push({ kind: "base", start: prev, end: ins.time });
-    const file = `clip_${ins.id}.${guessExt(ins.clip!.mimeType)}`;
-    await ff.writeFile(file, await fetchFile(clipBlobs.get(ins.id)!));
-    segs.push({ kind: "clip", file });
-    prev = ins.time;
+  // Write each source media once, keyed by its sourceKey.
+  const baseFile = `base.${guessExt(project.video.mimeType)}`;
+  const sourceFiles = new Map<string, string>([["base", baseFile]]);
+  await ff.writeFile(baseFile, await fetchFile(videoBlob));
+  for (const leaf of leaves) {
+    if (leaf.isBase || sourceFiles.has(leaf.sourceKey)) continue;
+    const file = `clip_${leaf.sourceKey}.${guessExt(mimeById.get(leaf.sourceKey)!)}`;
+    await ff.writeFile(file, await fetchFile(clipBlobs.get(leaf.sourceKey)!));
+    sourceFiles.set(leaf.sourceKey, file);
   }
-  if (duration - prev > 0.05) segs.push({ kind: "base", start: prev, end: duration });
 
-  // Base slices are already at the target resolution — just normalize.
+  // Base slices already match the target resolution; clips are scaled to COVER
+  // then center-cropped (fill, no black bars).
   const baseVf = `scale=${W}:${H},fps=30,format=yuv420p,setsar=1`;
-  // Inserted clips: scale to COVER the frame, then center-crop to the exact
-  // base resolution (fill, no black bars). Odd sizes are rounded to even.
   const clipVf = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=30,format=yuv420p,setsar=1`;
   const normalized: string[] = [];
   const finalOut = `output.${ext}`;
 
   try {
-    for (let i = 0; i < segs.length; i++) {
-      const seg = segs[i];
+    for (let i = 0; i < leaves.length; i++) {
+      const leaf = leaves[i];
       const out = `norm_${i}.ts`;
-      const common = [
-        "-vf", seg.kind === "base" ? baseVf : clipVf,
+      progressCb = (r) =>
+        onProgress({
+          label: `Rendering segment ${i + 1} of ${leaves.length}`,
+          ratio: ((i + r) / leaves.length) * 0.9,
+        });
+      await run(ff, [
+        "-i", sourceFiles.get(leaf.sourceKey)!,
+        "-ss", toFfmpegTime(leaf.inStart),
+        "-to", toFfmpegTime(leaf.inEnd),
+        "-vf", leaf.isBase ? baseVf : clipVf,
         "-c:v", "libx264", "-preset", "veryfast", "-crf", String(crf),
         "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2",
         "-f", "mpegts", out,
-      ];
-      const args =
-        seg.kind === "base"
-          ? ["-i", inputName, "-ss", toFfmpegTime(seg.start), "-to", toFfmpegTime(seg.end), ...common]
-          : ["-i", seg.file, ...common];
-
-      progressCb = (r) =>
-        onProgress({
-          label: `Rendering segment ${i + 1} of ${segs.length}`,
-          ratio: ((i + r) / segs.length) * 0.9,
-        });
-      await run(ff, args);
+      ]);
       normalized.push(out);
     }
 
@@ -251,11 +245,10 @@ export async function exportInsert(
     return { name: `${safeName(project.name)}_combined.${ext}`, blob: new Blob([data as unknown as BlobPart], { type: mime }) };
   } finally {
     progressCb = null;
-    await ff.deleteFile(inputName).catch(() => {});
     await ff.deleteFile("concat.txt").catch(() => {});
     await ff.deleteFile(finalOut).catch(() => {});
     for (const n of normalized) await ff.deleteFile(n).catch(() => {});
-    for (const seg of segs) if (seg.kind === "clip") await ff.deleteFile(seg.file).catch(() => {});
+    for (const f of sourceFiles.values()) await ff.deleteFile(f).catch(() => {});
   }
 }
 

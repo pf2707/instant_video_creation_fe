@@ -26,12 +26,15 @@ interface AppState {
   addCut: (time: number) => void;
   removeCut: (id: string) => void;
 
-  addInsert: (time: number) => void;
+  addInsert: (time: number, parentId?: string) => void;
   removeInsert: (id: string) => void;
   setInsertClip: (id: string, file: File) => Promise<void>;
 
   /** Last font size the user set, reused for the next new overlay. */
   lastFontSize: number | null;
+  /** Last overlay position (0..1), reused for the next new overlay. */
+  lastOverlayX: number | null;
+  lastOverlayY: number | null;
   addOverlay: (start?: number) => string | undefined;
   updateOverlay: (id: string, patch: Partial<TextOverlay>) => void;
   removeOverlay: (id: string) => void;
@@ -46,6 +49,8 @@ export const useStore = create<AppState>((set, get) => ({
   videoUrl: null,
   busy: false,
   lastFontSize: null,
+  lastOverlayX: null,
+  lastOverlayY: null,
 
   init: async () => {
     const projects = await db.listProjects();
@@ -146,13 +151,20 @@ export const useStore = create<AppState>((set, get) => ({
     get().patchCurrent({ cuts: current.cuts.filter((c) => c.id !== id) });
   },
 
-  addInsert: (time) => {
+  addInsert: (time, parentId) => {
     const current = get().current;
     if (!current) return;
-    if (current.inserts.some((i) => Math.abs(i.time - time) < 0.05)) return;
+    // Allow stacking at the same spot, but don't create two EMPTY points there
+    // within the same parent source.
+    if (
+      current.inserts.some(
+        (i) => i.parentId === parentId && Math.abs(i.time - time) < 0.05 && !i.clip,
+      )
+    )
+      return;
     const inserts = [
       ...current.inserts,
-      { id: crypto.randomUUID(), time },
+      { id: crypto.randomUUID(), time, parentId },
     ].sort((a, b) => a.time - b.time);
     get().patchCurrent({ inserts });
   },
@@ -160,9 +172,21 @@ export const useStore = create<AppState>((set, get) => ({
   removeInsert: (id) => {
     const current = get().current;
     if (!current) return;
-    db.deleteClipBlob(id);
+    // Collect the insert and all of its descendants (nested clips).
+    const toRemove = new Set<string>([id]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const i of current.inserts) {
+        if (i.parentId && toRemove.has(i.parentId) && !toRemove.has(i.id)) {
+          toRemove.add(i.id);
+          grew = true;
+        }
+      }
+    }
+    toRemove.forEach((rid) => db.deleteClipBlob(rid));
     get().patchCurrent({
-      inserts: current.inserts.filter((i) => i.id !== id),
+      inserts: current.inserts.filter((i) => !toRemove.has(i.id)),
     });
   },
 
@@ -203,8 +227,8 @@ export const useStore = create<AppState>((set, get) => ({
     const overlay: TextOverlay = {
       id: crypto.randomUUID(),
       text: "Your text",
-      x: 0.5,
-      y: 0.5,
+      x: get().lastOverlayX ?? 0.5,
+      y: get().lastOverlayY ?? 0.5,
       fontSize,
       fontFamily: "Inter",
       bold: true,
@@ -221,8 +245,10 @@ export const useStore = create<AppState>((set, get) => ({
   updateOverlay: (id, patch) => {
     const current = get().current;
     if (!current) return;
-    // Remember the chosen font size for the next new overlay.
+    // Remember font size and position for the next new overlay.
     if (patch.fontSize != null) set({ lastFontSize: patch.fontSize });
+    if (patch.x != null) set({ lastOverlayX: patch.x });
+    if (patch.y != null) set({ lastOverlayY: patch.y });
     get().patchCurrent({
       overlays: current.overlays.map((o) => (o.id === id ? { ...o, ...patch } : o)),
     });

@@ -20,7 +20,13 @@ export interface Cut {
 /** An insert point for the Insert feature. */
 export interface InsertPoint {
   id: string;
+  /** Position (seconds) within the parent source. */
   time: number;
+  /**
+   * Which source this clip is inserted into: undefined = the base video,
+   * otherwise the id of another insert (nesting a clip inside a clip).
+   */
+  parentId?: string;
   /** Metadata of the uploaded clip for this point, if any. */
   clip?: VideoMeta;
 }

@@ -143,6 +143,27 @@ input, button { font-family: inherit; }
 .transport .time { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--txt-dim); }
 .transport .time b { color: var(--txt); }
 .transport .mark-btn { margin-left: auto; }
+.comp-scrub { flex: 1; min-width: 80px; accent-color: var(--accent); cursor: pointer; }
+
+/* Combined (base + inserts) timeline */
+.track.ctrack { align-items: stretch; }
+.cseg { position: relative; min-width: 0; overflow: hidden; border-right: 1px solid var(--panel); }
+.cseg.base { display: flex; }
+.cseg.clip { display: flex; border-left: 2px solid var(--insert); border-right: 2px solid var(--insert); }
+.cseg.clip::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: rgba(18, 168, 102, calc(0.09 * (var(--depth, 1) - 1))); }
+.nest-arrow { color: var(--insert); font-weight: 700; margin-right: 2px; }
+.cseg.clip .clip-tag {
+  position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 3px; z-index: 2; pointer-events: none;
+  font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: #00120a; background: var(--insert); padding: 1px 6px; border-radius: 4px;
+}
+.ctrack-legend { display: flex; gap: 16px; align-items: center; margin-top: 8px; font-size: 11px; color: var(--txt-dim); }
+.ctrack-legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.ctrack-legend .sw.base { background: linear-gradient(135deg, #c6d1e8, #dde5f3); }
+.ctrack-legend .sw.clip { background: var(--insert); }
+.ctrack-legend .muted { margin-left: auto; color: var(--txt-faint); }
+.insert-badge { position: absolute; top: 14px; right: 14px; z-index: 3; font-size: 11px; font-weight: 700; color: var(--insert); background: rgba(255, 255, 255, 0.92); border: 1px solid rgba(18, 168, 102, 0.35); padding: 4px 10px; border-radius: 20px; }
 
 /* ---------- Side panel ---------- */
 .side { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; overflow-y: auto; }

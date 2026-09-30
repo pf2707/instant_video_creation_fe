@@ -4,6 +4,7 @@ import { formatTime, formatBytes } from "../lib/format";
 import { Timeline, type Marker } from "./Timeline";
 import { ExportModal } from "./ExportModal";
 import { DecorWorkspace } from "./DecorWorkspace";
+import { InsertWorkspace } from "./InsertWorkspace";
 import { OverlayPreview } from "./OverlayPreview";
 import { TextOverlayPanel } from "./TextOverlayPanel";
 import { useVideoRect } from "../lib/useVideoRect";
@@ -11,7 +12,7 @@ import { useToast } from "./Toast";
 import type { InsertPoint, Project, TextOverlay } from "../types";
 
 /** Props forwarded to the shared TextOverlayPanel from a feature side panel. */
-interface OverlayPanelProps {
+export interface OverlayPanelProps {
   selectedId: string | null;
   currentTime: number;
   onAdd: () => void;
@@ -86,6 +87,8 @@ export function Editor() {
         <UploadState busy={busy} onFile={setBaseVideo} />
       ) : project.type === "decor" ? (
         <DecorWorkspace project={project} videoUrl={videoUrl} />
+      ) : project.type === "insert" ? (
+        <InsertWorkspace project={project} videoUrl={videoUrl} />
       ) : (
         <EditorWorkspace project={project} videoUrl={videoUrl} />
       )}
@@ -292,39 +295,21 @@ function EditorWorkspace({
           </div>
         </div>
 
-        {project.type === "split" ? (
-          <SplitPanel
-            project={project}
-            onSeek={seek}
-            overlayProps={{
-              selectedId: selectedOverlayId,
-              currentTime,
-              onAdd: onAddText,
-              onSelect: setSelectedOverlayId,
-              onUpdate: updateOverlay,
-              onRemove: (id) => {
-                removeOverlay(id);
-                if (selectedOverlayId === id) setSelectedOverlayId(null);
-              },
-            }}
-          />
-        ) : (
-          <InsertPanel
-            project={project}
-            onSeek={seek}
-            overlayProps={{
-              selectedId: selectedOverlayId,
-              currentTime,
-              onAdd: onAddText,
-              onSelect: setSelectedOverlayId,
-              onUpdate: updateOverlay,
-              onRemove: (id) => {
-                removeOverlay(id);
-                if (selectedOverlayId === id) setSelectedOverlayId(null);
-              },
-            }}
-          />
-        )}
+        <SplitPanel
+          project={project}
+          onSeek={seek}
+          overlayProps={{
+            selectedId: selectedOverlayId,
+            currentTime,
+            onAdd: onAddText,
+            onSelect: setSelectedOverlayId,
+            onUpdate: updateOverlay,
+            onRemove: (id) => {
+              removeOverlay(id);
+              if (selectedOverlayId === id) setSelectedOverlayId(null);
+            },
+          }}
+        />
       </div>
 
       <Timeline
@@ -394,36 +379,43 @@ function SplitPanel({
   );
 }
 
-function InsertPanel({
+export function InsertPanel({
   project,
-  onSeek,
+  onSeekInsert,
   overlayProps,
 }: {
   project: Project;
-  onSeek: (t: number) => void;
+  onSeekInsert: (id: string) => void;
   overlayProps: OverlayPanelProps;
 }) {
   const removeInsert = useStore((s) => s.removeInsert);
   const setInsertClip = useStore((s) => s.setInsertClip);
   const patch = useStore((s) => s.patchCurrent);
-  const inserts = [...project.inserts].sort((a, b) => a.time - b.time);
+
+  // Depth-first order so nested clips appear (indented) under their parent.
+  const childrenOf = (pid: string | undefined) =>
+    project.inserts.filter((i) => (i.parentId ?? undefined) === pid).sort((a, b) => a.time - b.time);
+  const flatten = (pid: string | undefined, depth: number): { ins: InsertPoint; depth: number }[] =>
+    childrenOf(pid).flatMap((ins) => [{ ins, depth }, ...flatten(ins.id, depth + 1)]);
+  const ordered = flatten(undefined, 0);
 
   return (
     <aside className="side">
-      <h4>Insert Points ({inserts.length})</h4>
+      <h4>Insert Points ({project.inserts.length})</h4>
       <div className="side-sec">
-        {inserts.length === 0 ? (
+        {ordered.length === 0 ? (
           <div className="empty-markers">
             No insert points yet. Move the playhead and press{" "}
             <b>Add insert here</b>.
           </div>
         ) : (
           <ul className="marker-list">
-            {inserts.map((ins) => (
+            {ordered.map(({ ins, depth }) => (
               <InsertRow
                 key={ins.id}
                 insert={ins}
-                onSeek={() => onSeek(ins.time)}
+                depth={depth}
+                onSeek={() => onSeekInsert(ins.id)}
                 onRemove={() => removeInsert(ins.id)}
                 onClip={(f) => setInsertClip(ins.id, f)}
               />
@@ -431,8 +423,8 @@ function InsertPanel({
           </ul>
         )}
         <div className="hint">
-          Each insert point needs a clip. Uploaded clips are <b>not</b> shown on
-          the timeline — only the marker. Export stitches them into the base.
+          Each insert point needs a clip. Scrub <b>into</b> an inserted clip and
+          press <b>Insert into this clip</b> to nest a clip inside it.
         </div>
       </div>
       <TextOverlayPanel overlays={project.overlays} {...overlayProps} />
@@ -444,11 +436,13 @@ function InsertPanel({
 
 function InsertRow({
   insert,
+  depth,
   onSeek,
   onRemove,
   onClip,
 }: {
   insert: InsertPoint;
+  depth: number;
   onSeek: () => void;
   onRemove: () => void;
   onClip: (f: File) => void;
@@ -456,8 +450,12 @@ function InsertRow({
   const inputRef = useRef<HTMLInputElement>(null);
   const toast = useToast((s) => s.show);
   return (
-    <li className={`marker-item insert-m ${insert.clip ? "filled" : ""}`}>
+    <li
+      className={`marker-item insert-m ${insert.clip ? "filled" : ""}`}
+      style={depth > 0 ? { marginLeft: depth * 14 } : undefined}
+    >
       <span className="dot" />
+      {depth > 0 && <span className="nest-arrow">↳</span>}
       <div className="grow">
         <div className="m-time" onClick={onSeek}>
           {formatTime(insert.time)}
