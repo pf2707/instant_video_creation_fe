@@ -30,7 +30,9 @@ interface AppState {
   removeInsert: (id: string) => void;
   setInsertClip: (id: string, file: File) => Promise<void>;
 
-  addOverlay: () => string | undefined;
+  /** Last font size the user set, reused for the next new overlay. */
+  lastFontSize: number | null;
+  addOverlay: (start?: number) => string | undefined;
   updateOverlay: (id: string, patch: Partial<TextOverlay>) => void;
   removeOverlay: (id: string) => void;
 
@@ -43,6 +45,7 @@ export const useStore = create<AppState>((set, get) => ({
   current: null,
   videoUrl: null,
   busy: false,
+  lastFontSize: null,
 
   init: async () => {
     const projects = await db.listProjects();
@@ -191,21 +194,24 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  addOverlay: () => {
+  addOverlay: (start) => {
     const current = get().current;
     if (!current || !current.video) return undefined;
+    const fontSize =
+      get().lastFontSize ?? Math.round(current.video.height * 0.08);
+    const startTime = Math.min(Math.max(start ?? 0, 0), current.video.duration);
     const overlay: TextOverlay = {
       id: crypto.randomUUID(),
       text: "Your text",
       x: 0.5,
       y: 0.5,
-      fontSize: Math.round(current.video.height * 0.08),
+      fontSize,
       fontFamily: "Inter",
       bold: true,
       italic: false,
       color: "#ffffff",
       background: "dark",
-      start: 0,
+      start: startTime,
       end: current.video.duration,
     };
     get().patchCurrent({ overlays: [...current.overlays, overlay] });
@@ -215,6 +221,8 @@ export const useStore = create<AppState>((set, get) => ({
   updateOverlay: (id, patch) => {
     const current = get().current;
     if (!current) return;
+    // Remember the chosen font size for the next new overlay.
+    if (patch.fontSize != null) set({ lastFontSize: patch.fontSize });
     get().patchCurrent({
       overlays: current.overlays.map((o) => (o.id === id ? { ...o, ...patch } : o)),
     });

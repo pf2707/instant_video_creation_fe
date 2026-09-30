@@ -56,21 +56,41 @@ export function ExportModal({
     setBusy(true);
     setProgress({ label: "Loading ffmpeg…", ratio: 0 });
     try {
-      const videoBlob = await db.getVideoBlob(project.id);
-      if (!videoBlob) throw new Error("Video data missing");
+      const originalBlob = await db.getVideoBlob(project.id);
+      if (!originalBlob) throw new Error("Video data missing");
 
-      let files: ExportedFile[];
-      if (isSplit) {
-        files = await exportSplit(project, videoBlob, setProgress);
-      } else if (isDecor) {
-        setProgress({ label: "Rendering text…", ratio: 0 });
+      // Render text overlays and burn them into the base video first, so Split
+      // and Insert operate on the decorated video (text lands on the right
+      // clips/positions with correct timing).
+      const renderOverlays = async () => {
         const { width, height } = project.video!;
-        const rendered = await Promise.all(
+        return Promise.all(
           project.overlays.map(async (overlay) => ({
             overlay,
             png: await renderOverlayPng(overlay, width, height),
           })),
         );
+      };
+
+      // For Split/Insert with overlays, decoration is a first phase (0–50%).
+      const willDecorate = !isDecor && project.overlays.length > 0;
+      let videoBlob = originalBlob;
+      if (willDecorate) {
+        const rendered = await renderOverlays();
+        const decorated = await exportDecor(project, originalBlob, rendered, (p) =>
+          setProgress({ label: "Adding text overlays", ratio: p.ratio * 0.5 }),
+        );
+        videoBlob = decorated.blob;
+      }
+      const mainProgress = (p: { label: string; ratio: number }) =>
+        setProgress({ label: p.label, ratio: willDecorate ? 0.5 + p.ratio * 0.5 : p.ratio });
+
+      let files: ExportedFile[];
+      if (isSplit) {
+        files = await exportSplit(project, videoBlob, mainProgress);
+      } else if (isDecor) {
+        setProgress({ label: "Rendering text…", ratio: 0 });
+        const rendered = await renderOverlays();
         files = [await exportDecor(project, videoBlob, rendered, setProgress)];
       } else {
         const clipBlobs = new Map<string, Blob>();
@@ -79,7 +99,7 @@ export function ExportModal({
           const b = await db.getClipBlob(ins.id);
           if (b) clipBlobs.set(ins.id, b);
         }
-        files = [await exportInsert(project, videoBlob, clipBlobs, setProgress)];
+        files = [await exportInsert(project, videoBlob, clipBlobs, mainProgress)];
       }
 
       setProgress({ label: "Saving…", ratio: 1 });

@@ -259,6 +259,10 @@ input, button { font-family: inherit; }
 }
 .overlay-text.selected { outline: 1px dashed rgba(139, 92, 246, 0.9); outline-offset: 4px; }
 .overlay-text.ghost { opacity: 0.35; }
+
+.align-guide { position: absolute; z-index: 4; pointer-events: none; background: var(--decor); box-shadow: 0 0 4px rgba(139, 92, 246, 0.6); }
+.align-guide.v { top: 0; bottom: 0; left: 50%; width: 1px; transform: translateX(-0.5px); }
+.align-guide.h { left: 0; right: 0; top: 50%; height: 1px; transform: translateY(-0.5px); }
 .overlay-text > div { min-height: 1em; }
 
 .marker-item.decor-m { cursor: pointer; }

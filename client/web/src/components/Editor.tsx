@@ -4,8 +4,21 @@ import { formatTime, formatBytes } from "../lib/format";
 import { Timeline, type Marker } from "./Timeline";
 import { ExportModal } from "./ExportModal";
 import { DecorWorkspace } from "./DecorWorkspace";
+import { OverlayPreview } from "./OverlayPreview";
+import { TextOverlayPanel } from "./TextOverlayPanel";
+import { useVideoRect } from "../lib/useVideoRect";
 import { useToast } from "./Toast";
-import type { InsertPoint, Project } from "../types";
+import type { InsertPoint, Project, TextOverlay } from "../types";
+
+/** Props forwarded to the shared TextOverlayPanel from a feature side panel. */
+interface OverlayPanelProps {
+  selectedId: string | null;
+  currentTime: number;
+  onAdd: () => void;
+  onSelect: (id: string) => void;
+  onUpdate: (id: string, patch: Partial<TextOverlay>) => void;
+  onRemove: (id: string) => void;
+}
 import {
   BackIcon,
   CheckIcon,
@@ -159,12 +172,23 @@ function EditorWorkspace({
   videoUrl: string | null;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
   const duration = project.video!.duration;
+  const videoRect = useVideoRect(stageRef, project.video!.width, project.video!.height);
 
   const addCut = useStore((s) => s.addCut);
   const addInsert = useStore((s) => s.addInsert);
+  const addOverlay = useStore((s) => s.addOverlay);
+  const updateOverlay = useStore((s) => s.updateOverlay);
+  const removeOverlay = useStore((s) => s.removeOverlay);
+
+  const onAddText = () => {
+    const id = addOverlay(currentTime);
+    if (id) setSelectedOverlayId(id);
+  };
 
   // Keep local currentTime in sync via rAF while playing for a smooth playhead.
   useEffect(() => {
@@ -215,7 +239,7 @@ function EditorWorkspace({
     <>
       <div className="editor-body">
         <div className="preview-wrap">
-          <div className="video-stage">
+          <div className="video-stage" ref={stageRef}>
             <span className="badge">
               {project.video!.name} · {project.video!.width}×{project.video!.height} ·{" "}
               {formatTime(duration)}
@@ -228,6 +252,18 @@ function EditorWorkspace({
                 onPlay={() => setPlaying(true)}
                 onPause={() => setPlaying(false)}
                 onClick={togglePlay}
+              />
+            )}
+            {videoRect && project.overlays.length > 0 && (
+              <OverlayPreview
+                overlays={project.overlays}
+                rect={videoRect}
+                videoHeight={project.video!.height}
+                selectedId={selectedOverlayId}
+                currentTime={currentTime}
+                playing={playing}
+                onSelect={setSelectedOverlayId}
+                onMove={(id, x, y) => updateOverlay(id, { x, y })}
               />
             )}
           </div>
@@ -257,9 +293,37 @@ function EditorWorkspace({
         </div>
 
         {project.type === "split" ? (
-          <SplitPanel project={project} onSeek={seek} />
+          <SplitPanel
+            project={project}
+            onSeek={seek}
+            overlayProps={{
+              selectedId: selectedOverlayId,
+              currentTime,
+              onAdd: onAddText,
+              onSelect: setSelectedOverlayId,
+              onUpdate: updateOverlay,
+              onRemove: (id) => {
+                removeOverlay(id);
+                if (selectedOverlayId === id) setSelectedOverlayId(null);
+              },
+            }}
+          />
         ) : (
-          <InsertPanel project={project} onSeek={seek} />
+          <InsertPanel
+            project={project}
+            onSeek={seek}
+            overlayProps={{
+              selectedId: selectedOverlayId,
+              currentTime,
+              onAdd: onAddText,
+              onSelect: setSelectedOverlayId,
+              onUpdate: updateOverlay,
+              onRemove: (id) => {
+                removeOverlay(id);
+                if (selectedOverlayId === id) setSelectedOverlayId(null);
+              },
+            }}
+          />
         )}
       </div>
 
@@ -278,9 +342,11 @@ function EditorWorkspace({
 function SplitPanel({
   project,
   onSeek,
+  overlayProps,
 }: {
   project: Project;
   onSeek: (t: number) => void;
+  overlayProps: OverlayPanelProps;
 }) {
   const removeCut = useStore((s) => s.removeCut);
   const patch = useStore((s) => s.patchCurrent);
@@ -321,6 +387,7 @@ function SplitPanel({
           <b>{cuts.length + 1} file{cuts.length ? "s" : ""}</b> — one per segment.
         </div>
       </div>
+      <TextOverlayPanel overlays={project.overlays} {...overlayProps} />
       <h4>Output</h4>
       <OutputOptions project={project} patch={patch} />
     </aside>
@@ -330,9 +397,11 @@ function SplitPanel({
 function InsertPanel({
   project,
   onSeek,
+  overlayProps,
 }: {
   project: Project;
   onSeek: (t: number) => void;
+  overlayProps: OverlayPanelProps;
 }) {
   const removeInsert = useStore((s) => s.removeInsert);
   const setInsertClip = useStore((s) => s.setInsertClip);
@@ -366,6 +435,7 @@ function InsertPanel({
           the timeline — only the marker. Export stitches them into the base.
         </div>
       </div>
+      <TextOverlayPanel overlays={project.overlays} {...overlayProps} />
       <h4>Output</h4>
       <OutputOptions project={project} patch={patch} />
     </aside>
