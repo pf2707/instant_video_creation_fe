@@ -5,18 +5,16 @@ on:
     branches: [main] # change to "master" if that is your default branch
   workflow_dispatch:
 
+# Needed so the workflow can push the built site to the gh-pages branch.
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
-# Allow one concurrent deployment; cancel in-progress runs on new pushes.
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,16 +36,14 @@ jobs:
           VITE_BASE: /${{ github.event.repository.name }}/
         run: npm run build
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: client/web/dist
+      # .nojekyll stops GitHub's Jekyll from processing the built assets.
+      - name: Disable Jekyll
+        run: touch dist/.nojekyll
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      # Publish the built app to the gh-pages branch (Deploy from a branch).
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: client/web/dist
+          publish_branch: gh-pages
